@@ -1,0 +1,17 @@
+PKG_BUILDDIR ?= $(PKGDIRBASE)/sodium
+
+CFLAGS += -DWOLFSSL_USER_SETTINGS=1
+CFLAGS += -DWOLFSSL_RIOT_OS=1
+
+INCLUDES += -I$(APPDIR)
+INCLUDES += -I$(PKGDIRBASE)/sodium
+INCLUDES += -I$(PKG_BUILDDIR)/src/libsodium/include
+INCLUDES += -I$(PKG_BUILDDIR)
+#INCLUDES += -I$(RIOTBASE)/pkg/sodium/include
+
+
+# wolfcrypt implements different options using pseudomodules
+#PSEUDOMODULES += wolfcrypt_%
+
+# wolfssl implements different options using pseudomodules (ocsp, dtls, crl, etc.)
+#PSEUDOMODULES += wolfssl_%
