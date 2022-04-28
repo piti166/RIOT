@@ -26,14 +26,15 @@
 #include "debug.h"
 
 /**
- * @brief   MTD device descriptor initialized with flash-page driver
+ * @brief Reserve flash memory to store CTAP data
  */
-static mtd_dev_t _mtd_dev = MTD_FLASHPAGE_INIT_VAL(CTAP_FLASH_PAGES_PER_SECTOR);
+FLASH_WRITABLE_INIT(_backing_memory, CONFIG_FIDO2_CTAP_NUM_FLASHPAGES);
 
 /**
- * @brief   Max amount of resident keys that can be stored
+ * @brief   MTD device descriptor initialized with flash-page driver
  */
-static uint16_t _max_rk_amnt;
+static mtd_flashpage_t _mtd_flash_dev = MTD_FLASHPAGE_INIT_VAL(CTAP_FLASH_PAGES_PER_SECTOR);
+static mtd_dev_t *_mtd_dev = &_mtd_flash_dev.base;
 
 /**
  * @brief   Check if flash region is erased
@@ -41,30 +42,24 @@ static uint16_t _max_rk_amnt;
 static bool _flash_is_erased(int page, int offset, size_t len);
 
 /**
- * @brief   Get amount of flashpages
+ * @brief   Get available amount of flashpages to store resident keys
  */
-static unsigned _amount_of_flashpages(void);
+static unsigned _amount_flashpages_rk(void);
 
 int fido2_ctap_mem_init(void)
 {
-    int ret;
-
-    ret = mtd_init(&_mtd_dev);
+    int ret = mtd_init(_mtd_dev);
 
     if (ret < 0) {
         return ret;
     }
 
-    for (unsigned i = CTAP_FLASH_RK_START_PAGE; i < _amount_of_flashpages(); i++) {
-        _max_rk_amnt += flashpage_size(i) / CTAP_FLASH_RK_SZ;
-    }
-
     return CTAP2_OK;
 }
 
-static unsigned _amount_of_flashpages(void)
+static unsigned _amount_flashpages_rk(void)
 {
-    return _mtd_dev.sector_count * _mtd_dev.pages_per_sector;
+    return _mtd_dev->sector_count * _mtd_dev->pages_per_sector;
 }
 
 int fido2_ctap_mem_read(void *buf, uint32_t page, uint32_t offset, uint32_t len)
@@ -73,7 +68,7 @@ int fido2_ctap_mem_read(void *buf, uint32_t page, uint32_t offset, uint32_t len)
 
     int ret;
 
-    ret = mtd_read_page(&_mtd_dev, buf, page, offset, len);
+    ret = mtd_read_page(_mtd_dev, buf, page, offset, len);
 
     if (ret < 0) {
         return CTAP1_ERR_OTHER;
@@ -89,14 +84,14 @@ int fido2_ctap_mem_write(const void *buf, uint32_t page, uint32_t offset, uint32
     int ret;
 
     if (!_flash_is_erased(page, offset, len)) {
-        ret = mtd_write_page(&_mtd_dev, buf, page, offset, len);
+        ret = mtd_write_page(_mtd_dev, buf, page, offset, len);
 
         if (ret < 0) {
             return CTAP1_ERR_OTHER;
         }
     }
     else {
-        ret = mtd_write_page_raw(&_mtd_dev, buf, page, offset, len);
+        ret = mtd_write_page_raw(_mtd_dev, buf, page, offset, len);
 
         if (ret < 0) {
             return CTAP1_ERR_OTHER;
@@ -119,16 +114,13 @@ static bool _flash_is_erased(int page, int offset, size_t len)
     return true;
 }
 
-uint16_t fido2_ctap_mem_get_max_rk_amount(void)
-{
-    return _max_rk_amnt;
-}
-
 int fido2_ctap_mem_get_flashpage_number_of_rk(uint16_t rk_idx)
 {
     uint16_t idx = 0;
+    unsigned start = fido2_ctap_mem_flash_page() + CTAP_FLASH_RK_OFF;
+    unsigned amount = _amount_flashpages_rk();
 
-    for (unsigned i = CTAP_FLASH_RK_START_PAGE; i < _amount_of_flashpages(); i++) {
+    for (unsigned i = start; i < start + amount; i++) {
         idx += flashpage_size(i) / CTAP_FLASH_RK_SZ;
 
         if (idx >= rk_idx) {
@@ -142,8 +134,10 @@ int fido2_ctap_mem_get_flashpage_number_of_rk(uint16_t rk_idx)
 int fido2_ctap_mem_get_offset_of_rk_into_flashpage(uint16_t rk_idx)
 {
     uint16_t idx = 0;
+    unsigned start = fido2_ctap_mem_flash_page() + CTAP_FLASH_RK_OFF;
+    unsigned amount = _amount_flashpages_rk();
 
-    for (unsigned i = CTAP_FLASH_RK_START_PAGE; i < _amount_of_flashpages(); i++) {
+    for (unsigned i = start; i < start + amount; i++) {
         uint16_t old_idx = idx;
         idx += flashpage_size(i) / CTAP_FLASH_RK_SZ;
 
@@ -153,4 +147,21 @@ int fido2_ctap_mem_get_offset_of_rk_into_flashpage(uint16_t rk_idx)
     }
 
     return -1;
+}
+
+unsigned fido2_ctap_mem_flash_page(void)
+{
+    return flashpage_page((void *)_backing_memory);
+}
+
+int fido2_ctap_mem_erase_flash(void)
+{
+    unsigned start = fido2_ctap_mem_flash_page();
+    unsigned end = start + CONFIG_FIDO2_CTAP_NUM_FLASHPAGES;
+
+    for (unsigned page = start; page < end; page++) {
+        flashpage_erase(page);
+    }
+
+    return CTAP2_OK;
 }
