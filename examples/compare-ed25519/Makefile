@@ -71,8 +71,8 @@ USEMODULE += wolfcrypt_ed25519
 USEMODULE += wolfcrypt_random
 
 # libsodium support
-USEPKG += sodium
-USEMODULE += sodium
+#USEPKG += sodium
+#USEMODULE += sodium
 
 #libgcrypt support
 USEPKG += gcrypt

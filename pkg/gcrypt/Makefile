@@ -1,6 +1,6 @@
-PKG_NAME=wolfssl
-PKG_URL=https://github.com/wolfssl/wolfssl.git
-PKG_VERSION=0fa5af9929ce2ee99e8789996a3048f41a99830e # v4.5.0
+PKG_NAME=gcrypt
+PKG_URL=https://github.com/gpg/libgcrypt
+PKG_VERSION=ccfa9f2c1427b40483984198c3df41f8057f69f8
 PKG_LICENSE=GPLv2
 
 include $(RIOTBASE)/pkg/pkg.mk
@@ -9,21 +9,28 @@ include $(RIOTBASE)/pkg/pkg.mk
 # https://gcc.gnu.org/bugzilla/buglist.cgi?quicksearch=may%20be%20used%20uninitialized
 # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=42145
 # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=90710#c1
-CFLAGS += -Wno-maybe-uninitialized
+# CFLAGS += -Wno-maybe-uninitialized
 
 # wolfcrypt uses uint8_t for block buffers, on which fast
 # 32 bit operations are performed. From a quick peek at the
 # code it looks like the buffers are correctly aligned, so
 # this is a false positive.
-CFLAGS += -Wno-cast-align
+# CFLAGS += -Wno-cast-align
 
-.PHONY: wolfcrypt%
+#.PHONY: wolfcrypt%
 
-all: $(filter wolfcrypt wolfcrypt-test wolfcrypt-benchmark,$(USEMODULE))
-	$(QQ)"$(MAKE)" -C $(PKG_SOURCE_DIR)/src -f $(CURDIR)/Makefile.wolfssl
+all: config build
 
-wolfcrypt:
-	$(QQ)"$(MAKE)" -C $(PKG_SOURCE_DIR)/wolfcrypt/src -f $(CURDIR)/Makefile.wolfcrypt
+config:
+	(cd $(PKG_SOURCE_DIR) && ./autogen.sh)
+	(cd $(PKG_SOURCE_DIR) && automake)
+	(cd $(PKG_SOURCE_DIR) && ./configure)
 
-wolfcrypt-%:
-	$(QQ)"$(MAKE)" -C $(PKG_SOURCE_DIR)/wolfcrypt/$* -f $(CURDIR)/Makefile.wolfcrypt-$*
+build:
+	$(QQ)"$(MAKE)" -C $(PKG_SOURCE_DIR) -f $(RIOTBASE)/Makefile.base
+
+#wolfcrypt:
+#	$(QQ)"$(MAKE)" -C $(PKG_SOURCE_DIR)/wolfcrypt/src -f $(CURDIR)/Makefile.wolfcrypt
+
+#wolfcrypt-%:
+#	$(QQ)"$(MAKE)" -C $(PKG_SOURCE_DIR)/wolfcrypt/$* -f $(CURDIR)/Makefile.wolfcrypt-$*

@@ -34,8 +34,8 @@
 #include "net/gnrc.h"
 #endif
 
-#include <sodium.h>
-//#include <gcrypt.h>
+//#include <sodium.h>
+#include <gcrypt.h>
 //#include <wolfssl/options.h>
 #include <wolfssl/wolfcrypt/settings.h>
 #include <wolfssl/ssl.h>
@@ -44,15 +44,15 @@
 #include <xtimer.h>
 
 #define SODIUM 0
-#define GCRYPT 0
-#define WOLFCRYPT 1
+#define GCRYPT 1
+#define WOLFCRYPT 0
 
 //void ecdsaWolfcryptTest(void);
-
+void ecdsaGcryptTest(void);
 static const uint32_t ecdsaTestMessage[] = { 0x65637572, 0x20612073, 0x68206F66, 0x20686173, 0x69732061, 0x68697320, 0x6F2C2054, 0x48616C6C};
 
 #if SODIUM
-void ecdsaSodiumTest() {
+void ecdsaSodiumTest(void) {
 	int ret __attribute__((unused));
 	
 	// Init
@@ -83,7 +83,7 @@ void ecdsaSodiumTest() {
 #endif
 
 #if GCRYPT
-void ecdsaGcryptTest() {
+void ecdsaGcryptTest(void) {
 	int ret __attribute__((unused));
 
 	if(!gcry_check_version("1.8.5")){
